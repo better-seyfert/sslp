@@ -77,7 +77,7 @@ export class ArgsParser {
 		});
 	}
 
-	private buildQuotePatterns(quotes: [string | RegExp, string | RegExp][]) {
+	private buildQuotePatterns(quotes: (string | RegExp)[][]) {
 		const transformedPatterns: [string, string][] = [];
 
 		for (const pattern of quotes) {

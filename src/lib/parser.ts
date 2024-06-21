@@ -14,8 +14,10 @@ import {
 interface ArgsParserOptions {
 	prefixes?: string[];
 	separators?: string[];
-	quotes?: [string, string][];
+	quotes?: [string | RegExp, string | RegExp][];
+
 	debug?: boolean;
+	buildPatterns?: boolean;
 }
 
 type Command = (SeyfertCommand | SubCommand) & {
@@ -29,11 +31,8 @@ type Command = (SeyfertCommand | SubCommand) & {
  * @param [command] - The command object that may contain its own parser configuration.
  * @returns The combined configuration.
  */
-export const defaultConfig = (
-	options?: ArgsParserOptions,
-	command?: Command,
-) => {
-	const _options = command?.__parserConfig ?? options ?? {};
+export const defaultConfig = (options?: ArgsParserOptions) => {
+	const _options = options ?? {};
 	return {
 		prefixes: _options.prefixes ?? ["--", "/"],
 		separators: _options.separators ?? ["=", ":"],
@@ -43,6 +42,7 @@ export const defaultConfig = (
 			["「", "」"],
 		],
 		debug: _options.debug ?? false,
+		buildPatterns: _options.buildPatterns ?? true,
 	};
 };
 
@@ -66,10 +66,42 @@ export class ArgsParser {
 	 * @param [options] - The configuration options.
 	 */
 	private configureParser(options?: ArgsParserOptions) {
-		const { prefixes, separators, quotes, debug } = defaultConfig(options);
+		const { prefixes, separators, quotes, debug, buildPatterns } =
+			defaultConfig(options);
 		this.debug = debug ? new Logger({ name: "ArgsParser" }) : false;
 		this.parser = new Parser(new PrefixedStrategy(prefixes, separators));
-		this.lexer = new Lexer({ quotes });
+		this.lexer = new Lexer({
+			quotes: buildPatterns
+				? this.buildQuotePatterns(quotes)
+				: (quotes as [string, string][]),
+		});
+	}
+
+	private buildQuotePatterns(quotes: [string | RegExp, string | RegExp][]) {
+		const transformedPatterns: [string, string][] = [];
+
+		for (const pattern of quotes) {
+			if (typeof pattern[0] === "string" && typeof pattern[1] === "string") {
+				transformedPatterns.push([pattern[0], pattern[1]]);
+			} else if (
+				pattern[0] instanceof RegExp &&
+				typeof pattern[1] === "string"
+			) {
+				const regex = pattern[0];
+				const replacement = pattern[1];
+
+				// Extract all options from the regex
+				const options = regex.source.match(/\((.*?)\)/)?.[1]?.split("|") ?? [];
+				for (const option of options) {
+					const formattedPattern = regex.source.replace(/\(.*?\)/, option);
+					transformedPatterns.push([formattedPattern, replacement]);
+				}
+			} else {
+				throw new Error(`Invalid quote pattern: ${pattern}`);
+			}
+		}
+
+		return transformedPatterns;
 	}
 
 	/**
@@ -159,7 +191,7 @@ export class ArgsParser {
 	 */
 	runParser(content: string, command: SeyfertCommand | SubCommand) {
 		const config = (command as Command).__parserConfig;
-		if (config) this.configureParser();
+		if (config) this.configureParser(config);
 
 		const parsedContent = this.parseContent(content);
 		return this.extractOptions(

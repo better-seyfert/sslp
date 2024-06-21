@@ -1,4 +1,4 @@
-# SSLP (Super Seyfert Light Parser)
+# SSLP (super seyfert light parser) 
 > Custom args parser for Seyfert.
 
 

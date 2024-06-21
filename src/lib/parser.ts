@@ -4,86 +4,186 @@ import {
 	type ParserResult,
 	PrefixedStrategy,
 } from "@sapphire/lexure";
-import type { CommandOption } from "seyfert";
+import {
+	type CommandOption,
+	Logger,
+	type Command as SeyfertCommand,
+	type SubCommand,
+} from "seyfert";
 
 interface ArgsParserOptions {
 	prefixes?: string[];
 	separators?: string[];
 	quotes?: [string, string][];
+	debug?: boolean;
 }
 
-export class ArgsParser {
-	private parser: Parser;
-	private lexer: Lexer;
+type Command = (SeyfertCommand | SubCommand) & {
+	__parserConfig?: ArgsParserOptions;
+};
 
-	constructor(options?: ArgsParserOptions) {
-		const defaultPrefixes = ["--", "/"];
-		const defaultSeparators = ["=", ":"];
-		const defaultQuotes: [string, string][] = [
+/**
+ * Generates the default configuration for the ArgsParser.
+ *
+ * @param [options] - The options to override the defaults.
+ * @param [command] - The command object that may contain its own parser configuration.
+ * @returns The combined configuration.
+ */
+export const defaultConfig = (
+	options?: ArgsParserOptions,
+	command?: Command,
+) => {
+	const _options = command?.__parserConfig ?? options ?? {};
+	return {
+		prefixes: _options.prefixes ?? ["--", "/"],
+		separators: _options.separators ?? ["=", ":"],
+		quotes: _options.quotes ?? [
 			['"', '"'],
 			["“", "”"],
 			["「", "」"],
-		];
+		],
+		debug: _options.debug ?? false,
+	};
+};
 
-		const prefixes = options?.prefixes ?? defaultPrefixes;
-		const separators = options?.separators ?? defaultSeparators;
-		const quotes = options?.quotes ?? defaultQuotes;
+export class ArgsParser {
+	private parser!: Parser;
+	private lexer!: Lexer;
+	private debug: Logger | false = false;
 
+	/**
+	 * Creates an instance of ArgsParser.
+	 *
+	 * @param [options] - The initial configuration options.
+	 */
+	constructor(options?: ArgsParserOptions) {
+		this.configureParser(options);
+	}
+
+	/**
+	 * Configures the parser and lexer with the provided options.
+	 *
+	 * @param [options] - The configuration options.
+	 */
+	private configureParser(options?: ArgsParserOptions) {
+		const { prefixes, separators, quotes, debug } = defaultConfig(options);
+		this.debug = debug ? new Logger({ name: "ArgsParser" }) : false;
 		this.parser = new Parser(new PrefixedStrategy(prefixes, separators));
 		this.lexer = new Lexer({ quotes });
 	}
 
+	/**
+	 * Parses the input content using the lexer and parser.
+	 *
+	 * @param content - The content to be parsed.
+	 * @returns The result of the parsing process.
+	 *
+	 * @example
+	 * ```typescript
+	 * const parser = new ArgsParser();
+	 * const result = parser.parseContent('--option=value');
+	 * console.log(result);
+	 * ```
+	 */
 	parseContent(content: string): ParserResult {
 		return this.parser.run(this.lexer.run(content));
 	}
 
-	getOptionValues(parsedContent: ParserResult, optionName: string) {
+	private extractOption(parsedContent: ParserResult, optionName: string) {
 		return parsedContent.options.get(optionName) ?? [];
 	}
 
-	getOrderedValues(
-		parsedContent: ParserResult,
-		commandOptions: CommandOption[],
-	) {
-		return commandOptions.map(
-			(_, index) => parsedContent.ordered[index]?.value ?? null,
-		);
+	private extractOrdered(parsedContent: ParserResult, index: number) {
+		return parsedContent.ordered[index]?.value ?? null;
 	}
 
+	/**
+	 * Parses the input content using the lexer and parser.
+	 *
+	 * @param content - The content to be parsed.
+	 * @returns The result of the parsing process.
+	 *
+	 * @example
+	 * ```typescript
+	 * const parser = new ArgsParser();
+	 * const result = parser.parseContent('--flag=value');
+	 * console.log(result);
+	 * ```
+	 */
 	extractOptions(
 		parsedContent: ParserResult,
 		commandOptions: CommandOption[],
 	): Record<string, string | boolean> {
 		const optionsMap: Record<string, string | boolean> = {};
 
-		// Process named and ordered options
-		for (const { name } of commandOptions) {
-			const optionValues = this.getOptionValues(parsedContent, name);
+		for (let i = 0; i < commandOptions.length; i++) {
+			const { name } = commandOptions[i];
+			const optionValues = this.extractOption(parsedContent, name);
 			if (optionValues.length > 0) {
 				optionsMap[name] = optionValues[0];
 			} else {
-				const orderedValues = this.getOrderedValues(
-					parsedContent,
-					commandOptions,
-				);
-				for (let i = 0; i < orderedValues.length; i++) {
-					if (orderedValues[i] !== null) {
-						optionsMap[commandOptions[i].name] = orderedValues[i] as string;
-					}
+				const orderedValue = this.extractOrdered(parsedContent, i);
+				if (orderedValue !== null) {
+					optionsMap[name] = orderedValue as string;
 				}
 			}
 		}
 
-		// Process flag options using the flags set
 		for (const flag of parsedContent.flags.values()) {
 			optionsMap[flag] = true;
+		}
+
+		if (this.debug) {
+			for (const [name, value] of Object.entries(optionsMap)) {
+				this.debug.debug(`Extracted option '${name}' with value '${value}'`);
+			}
 		}
 
 		return optionsMap;
 	}
 
-	runParser(content: string, commandOptions: CommandOption[]) {
+	/**
+	 * Runs the parser on the given content using the provided command's configuration.
+	 *
+	 * @param content - The content to parse.
+	 * @param command - The command to use for configuration.
+	 * @returns The extracted options and flags.
+	 *
+	 * @example
+	 * ```typescript
+	 * const parser = new ArgsParser();
+	 * const command = { options: [{ name: 'flag' }, { name: 'option' }] };
+	 * const result = parser.runParser('--flag --option=value', command);
+	 * console.log(result);
+	 * ```
+	 */
+	runParser(content: string, command: SeyfertCommand | SubCommand) {
+		const config = (command as Command).__parserConfig;
+		if (config) this.configureParser();
+
 		const parsedContent = this.parseContent(content);
-		return this.extractOptions(parsedContent, commandOptions);
+		return this.extractOptions(
+			parsedContent,
+			command.options as CommandOption[],
+		);
 	}
+}
+
+/**
+ * Decorator to set parser configuration for a command class.
+ *
+ * @param config - The configuration options.
+ *
+ * @example
+ * ```typescript
+ * @ParserConfig({ prefixes: ['--'], separators: ['='] })
+ * class MyCommand  extends Command {}
+ * ```
+ */
+export function ParserConfig(config: ArgsParserOptions) {
+	return <T extends { new (...args: any[]): {} }>(target: T) => {
+		return class extends target {
+			__parserConfig = defaultConfig(config);
+		};
+	};
 }

@@ -1,7 +1,7 @@
+import { bench, group, run } from "mitata";
 import type { Command, CommandOption } from "seyfert";
-import { group, bench, run } from "mitata";
-import { ArgsParser } from "../src";
 import { YunaParser } from "yunaforseyfert";
+import { ArgsParser } from "../src";
 
 group("Simple parsing", () => {
 	bench("Yuna", () => {
@@ -12,9 +12,9 @@ group("Simple parsing", () => {
 	bench("SSLP", () => {
 		const parser = new ArgsParser();
 
-		parser.runParser("simxnet unallowed", [
-			{ name: "name" },
-		] as CommandOption[]);
+		parser.runParser("simxnet unallowed", {
+			options: [{ name: "name" }],
+		} as Command);
 	});
 });
 

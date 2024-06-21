@@ -1,13 +1,16 @@
-import { describe, it, expect } from "bun:test";
+import { describe, expect, it } from "bun:test";
+import type { Command, CommandOption } from "seyfert";
 import { ArgsParser } from "../src";
-import type { CommandOption } from "seyfert";
 
 const testOptions: Pick<CommandOption, "name">[] = [
 	{
 		name: "name",
 	},
 	{
-		name: "flag",
+		name: "age",
+	},
+	{
+		name: "flag1",
 	},
 ];
 
@@ -15,9 +18,11 @@ const parser = new ArgsParser();
 
 describe("test", () => {
 	it("should pass", () => {
-		const content = "option1 --flag";
-		const result = parser.runParser(content, testOptions as CommandOption[]);
+		const content = "option1 --age=10 --flag";
+		const result = parser.runParser(content, {
+			options: testOptions,
+		} as Command);
 
-		expect(result).toEqual({ name: "option1", flag: true });
+		expect(result).toEqual({ name: "option1", age: "10", flag: true });
 	});
 });

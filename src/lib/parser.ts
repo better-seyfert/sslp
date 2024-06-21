@@ -14,7 +14,7 @@ import {
 interface ArgsParserOptions {
 	prefixes?: string[];
 	separators?: string[];
-	quotes?: [string | RegExp, string | RegExp][];
+	quotes?: (string | RegExp)[][];
 
 	debug?: boolean;
 	buildPatterns?: boolean;

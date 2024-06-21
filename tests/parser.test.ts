@@ -7,10 +7,10 @@ const testOptions: Pick<CommandOption, "name">[] = [
 		name: "name",
 	},
 	{
-		name: "flag1",
+		name: "age",
 	},
 	{
-		name: "flag2",
+		name: "flag1",
 	},
 ];
 
@@ -18,11 +18,11 @@ const parser = new ArgsParser();
 
 describe("test", () => {
 	it("should pass", () => {
-		const content = "option1 --flag1 --flag2=value";
+		const content = "option1 --age=10 --flag";
 		const result = parser.runParser(content, {
 			options: testOptions,
 		} as Command);
 
-		expect(result).toEqual({ name: "option1", flag1: true, flag2: "value" });
+		expect(result).toEqual({ name: "option1", age: "10", flag: true });
 	});
 });

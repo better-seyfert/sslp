@@ -1,19 +1,12 @@
 # SSLP (Super Seyfert Light Parser)
 > Custom args parser for Seyfert.
 
-SSLP is a lightweight and customizable argument parser designed specifically for use with [Seyfert](https://www.seyfert.dev/), enhancing command parsing capabilities with ease.
 
 ## Installation
-You can install SSLP via npm, yarn, or pnpm:
-
 ```bash
-npm install sslp
+bun add sslp
 ```
-
-```bash
-yarn add sslp
-```
-
+or pnpm...
 ```bash
 pnpm add sslp
 ```
@@ -21,9 +14,9 @@ pnpm add sslp
 ## Usage
 Integrating SSLP into your Seyfert client is straightforward:
 
-```typescript
-import { Client } from 'seyfert';
-import { ArgsParser } from 'sslp';
+```ts
+import { Client } from "seyfert";
+import { ArgsParser } from "sslp" 
 
 const parser = new ArgsParser();
 const seyfertClient = new Client({
@@ -31,9 +24,9 @@ const seyfertClient = new Client({
         argsParser: (content, command) => parser.runParser(content, command)
     }
 });
-```
 
-With SSLP configured, Seyfert can now leverage advanced argument parsing capabilities tailored to your application's needs.
+// That's it! Now you can use Seyfert with your new upgraded args parser!
+```
 
 ## Features
 

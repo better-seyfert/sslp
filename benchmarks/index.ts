@@ -2,28 +2,57 @@ import { bench, group, run } from "mitata";
 import type { Command } from "seyfert";
 import { YunaParser } from "yunaforseyfert";
 import { ArgsParser } from "../src";
+import { ApplicationCommandOptionType } from "seyfert/lib/types";
+
+import { parseArgs } from "node:util";
+
+const {
+	values: { json },
+} = parseArgs({
+	args: Bun.argv,
+	options: {
+		json: {
+			type: "boolean",
+			default: false,
+		},
+	},
+	strict: true,
+	allowPositionals: true,
+});
+
+const yuna = YunaParser();
+const sslp = new ArgsParser();
+
+const commandOptions = {
+	options: [
+		{
+			name: "name",
+			type: ApplicationCommandOptionType.String,
+		},
+	],
+} as Command;
+
+const content = "!hello --name=world";
 
 group("Simple parsing", () => {
 	bench("Yuna", () => {
-		const parser = YunaParser();
-
-		parser("simxnet unallowed", { options: [{ name: "name" }] } as Command);
+		yuna(content, commandOptions);
 	});
 	bench("SSLP", () => {
-		const parser = new ArgsParser();
-
-		parser.runParser("simxnet unallowed", {
-			options: [{ name: "name" }],
-		} as Command);
+		sslp.runParser(content, commandOptions);
 	});
 });
 
-run({
-	json: true,
-	silent: true,
-}).then((o) =>
-	Bun.write("./bench.json", Buffer.from(JSON.stringify(o.benchmarks), "utf-8")),
-);
+if (json)
+	run({
+		json: true,
+		silent: true,
+	}).then((o) =>
+		Bun.write(
+			"./bench.json",
+			Buffer.from(JSON.stringify(o.benchmarks), "utf-8"),
+		),
+	);
 
 await run({
 	silent: false, // enable/disable stdout output

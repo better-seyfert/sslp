@@ -24,16 +24,16 @@
     "bench": "bun run ./benchmarks/index.ts"
   },
   "devDependencies": {
-    "bun-types": "latest",
+    "bun-types": "^1.1.17",
     "mitata": "^0.1.11",
     "yunaforseyfert": "^0.10.3"
   },
   "peerDependencies": {
-    "typescript": "^5.4.5"
+    "typescript": "^5.5.2"
   },
   "dependencies": {
     "@sapphire/lexure": "^1.1.7",
-    "@sinclair/typebox": "^0.32.32",
+    "@sinclair/typebox": "^0.32.34",
     "seyfert": "^1.5.0",
     "tsup": "^8.1.0"
   }

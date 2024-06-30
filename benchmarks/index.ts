@@ -1,5 +1,5 @@
 import { bench, group, run } from "mitata";
-import type { Command, CommandOption } from "seyfert";
+import type { Command } from "seyfert";
 import { YunaParser } from "yunaforseyfert";
 import { ArgsParser } from "../src";
 

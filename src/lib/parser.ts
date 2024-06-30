@@ -213,6 +213,8 @@ export class ArgsParser {
  * ```
  */
 export function ParserConfig(config: ArgsParserOptions) {
+	// biome-ignore lint/complexity/noBannedTypes: xd
+	// biome-ignore lint/suspicious/noExplicitAny: xd
 	return <T extends { new (...args: any[]): {} }>(target: T) => {
 		return class extends target {
 			__parserConfig = defaultConfig(config);
